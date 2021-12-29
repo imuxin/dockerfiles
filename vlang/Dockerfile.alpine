@@ -1,0 +1,28 @@
+# Minimal image for compiling V programs
+# - No UI dependencies
+# - gcc compiler (only works on alpine)
+
+# Stage 1 - Build the V-compiler
+FROM slic/vlang:alpine-build AS builder
+
+WORKDIR /opt/vlang
+
+COPY v /opt/vlang
+# RUN git clone https://github.com/vlang/v /opt/vlang && make VFLAGS='-cc gcc' && v -version
+RUN sed -i 's/github.com/hub.fastgit.org/g' Makefile &&  \
+    sed -i 's/github.com/hub.fastgit.org/g' GNUmakefile &&  \
+    make VFLAGS='-cc gcc' && v -version
+
+# Stage 2 - Make minimal runtime without git and make 
+#           we still nedd gcc and musl-dev for v to compile
+
+FROM slic/vlang:alpine-base AS runtime
+
+ENV VFLAGS="-cc gcc"
+
+RUN apk --no-cache add \
+    gcc musl-dev git
+
+
+# Copy the prebuilt V compiler
+COPY --from=builder /opt/vlang /opt/vlang
